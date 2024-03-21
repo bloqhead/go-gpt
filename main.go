@@ -2,24 +2,41 @@ package main
 
 import (
 	"context"
+	"image/color"
 	"log"
 	"os"
+	"strings"
 
 	"gioui.org/app"
+	"gioui.org/layout"
 	"gioui.org/op"
- 	"gioui.org/layout"
+	"gioui.org/op/paint"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"gioui.org/unit"
-	"gioui.org/text"
+
+	// "gioui.org/text"
 	"github.com/sashabaranov/go-openai"
 )
 
 var (
+	// todo: add a separate initial screen where the user can set their own API key.
+	// todo: additionally, figure out where and how to store the API key securely within the app.
 	client = openai.NewClient(os.Getenv("OPENAI_API_KEY"))
-	labelText = "Hello, I'm ChatGPT. I can tell jokes."
+	labelText = "Hello, I'm ChatGPT. Let's start a conversation!"
 	theme = material.NewTheme()
+	title = "Go GPT"
+
+	// app dimensions and spacing
+	appWidth = unit.Dp(400)
+	appHeight = unit.Dp(600)
+	appPadding = unit.Dp(16)
+
+	// widgets
 	button = new(widget.Clickable)
+	promptInput = new(widget.Editor)
+
+	requestProcessing = false
 )
 
 type (
@@ -31,7 +48,11 @@ func main() {
 
 	// create our window
 	go func() {
-		w := app.NewWindow()
+		w := app.NewWindow(
+			app.Title(title),
+			app.Size(appWidth, appHeight),
+			app.MinSize(appWidth, appHeight),
+		)
 		err := run(w)
 
 		if err != nil {
@@ -57,37 +78,114 @@ func run(w *app.Window) error {
 
 				// handle button click events
 				if button.Clicked(gtx) {
-					go func() {
-						res, err := generateChatResponse(client, "Tell me a joke about Go developers.")
+					if !requestProcessing {
+						requestProcessing = true
 
-						if err != nil {
-							log.Printf("GPT Error: %s\n", err)
-						}
+						go func() {
+							query := strings.TrimSpace(promptInput.Text())
+							res, err := generateChatResponse(client, query)
 
-						labelText = res
+							if err != nil {
+								log.Printf("GPT Error: %s\n", err)
+							}
 
-						w.Invalidate()
-					}()
+							labelText = res
+							requestProcessing = false
+
+							w.Invalidate()
+						}()
+					}
 				}
 
-				layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-					// label
-					layout.Flexed(1, func(gtx C) D {
-						return layout.Center.Layout(gtx, func(gtx C) D {
-							label := material.Label(theme, unit.Sp(20), labelText)
-							label.Alignment = text.Middle
+				layout.Stack{}.Layout(gtx,
+					layout.Expanded(func(gtx C) D {
+						return layout.Inset{
+							Top: appPadding,
+							Bottom: appPadding,
+							Left: appPadding,
+							Right: appPadding,
+						}.Layout(gtx, func(gtx C) D {
+							// content area
+							return layout.Center.Layout(gtx, func(gtx C) D {
+								gtx.Constraints.Min = gtx.Constraints.Max
 
-							return label.Layout(gtx)
+								return layout.Flex{
+									Axis: layout.Vertical,
+									Spacing: layout.SpaceEvenly,
+								}.Layout(gtx,
+									// label
+									layout.Flexed(1, func(gtx C) D {
+										return layout.Center.Layout(gtx, func(gtx C) D {
+											label := material.Label(theme, unit.Sp(12), labelText)
+
+											return label.Layout(gtx)
+										})
+									}),
+
+									// input and button
+									layout.Flexed(5, func(gtx C) D {
+										return layout.Center.Layout(gtx, func(gtx C) D {
+											return layout.Flex{
+												Alignment: layout.Middle,
+											}.Layout(gtx,
+												// prompt input
+												layout.Flexed(4, func(gtx C) D {
+													input := material.Editor(theme, promptInput, "Enter your query...")
+
+													return input.Layout(gtx)
+												}),
+
+												// submit button
+												layout.Rigid(func(gtx C) D {
+													return layout.Center.Layout(gtx, func(gtx C) D {
+														btn := material.Button(theme, button, "Submit")
+
+														return btn.Layout(gtx)
+													})
+												}),
+											)
+										})
+									}),
+								)
+							})
 						})
 					}),
 
-					// button
-					layout.Flexed(1, func(gtx C) D {
-						return layout.Center.Layout(gtx, func(gtx C) D {
-							btn := material.Button(theme, button, "Tell me a joke")
+					layout.Stacked(func(gtx C) D {
+						if requestProcessing {
+							bgColor := color.NRGBA{R: 0, G: 0, B: 0, A: 150}
 
-							return btn.Layout(gtx)
-						})
+							return layout.Center.Layout(gtx, func(gtx C) D {
+								gtx.Constraints.Min = gtx.Constraints.Max
+
+								return layout.Stack{
+									Alignment: layout.Center,
+								}.Layout(gtx,
+									layout.Expanded(func(gtx C) D {
+										// semi-transparent background overlay
+										return layout.Inset{
+											Top: unit.Dp(0),
+											Bottom: unit.Dp(0),
+											Left: unit.Dp(0),
+											Right: unit.Dp(0),
+										}.Layout(gtx, func(gtx C) D {
+											paint.ColorOp{Color: bgColor}.Add(gtx.Ops)
+											paint.PaintOp{}.Add(gtx.Ops)
+											return D{}
+										})
+									}),
+
+									// loader
+									layout.Expanded(func(gtx C) D {
+										loader := material.Loader(theme)
+
+										return loader.Layout(gtx)
+									}),
+								)
+							})
+						}
+
+						return D{}
 					}),
 				)
 
@@ -97,6 +195,8 @@ func run(w *app.Window) error {
 }
 
 func generateChatResponse(client *openai.Client, prompt string) (string, error) {
+	// isLoading := true
+
 	res, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
