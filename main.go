@@ -107,11 +107,11 @@ func run(w *app.Window) error {
 						}.Layout(gtx, func(gtx C) D {
 							// content area
 							return layout.Center.Layout(gtx, func(gtx C) D {
-								gtx.Constraints.Min = gtx.Constraints.Max
+								// gtx.Constraints.Min = gtx.Constraints.Max
 
 								return layout.Flex{
 									Axis: layout.Vertical,
-									Spacing: layout.SpaceEvenly,
+									Spacing: layout.SpaceBetween,
 								}.Layout(gtx,
 									// label
 									layout.Flexed(1, func(gtx C) D {
