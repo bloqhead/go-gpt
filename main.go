@@ -17,12 +17,13 @@ import (
 
 	// "gioui.org/text"
 	"github.com/sashabaranov/go-openai"
+
+	"github.com/joho/godotenv"
 )
 
 var (
-	// todo: add a separate initial screen where the user can set their own API key.
-	// todo: additionally, figure out where and how to store the API key securely within the app.
-	client = openai.NewClient(os.Getenv("OPENAI_API_KEY"))
+	apiKey string
+
 	labelText = "Hello, I'm ChatGPT. Let's start a conversation!"
 	theme = material.NewTheme()
 	title = "Go GPT"
@@ -45,6 +46,15 @@ type (
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// todo: add a separate initial screen where the user can set their own API key.
+	// todo: additionally, figure out where and how to store the API key securely within the app.
+	apiKey = os.Getenv("OPENAI_API_KEY")
 
 	// create our window
 	go func() {
@@ -82,6 +92,7 @@ func run(w *app.Window) error {
 						requestProcessing = true
 
 						go func() {
+							client := openai.NewClient(apiKey)
 							query := strings.TrimSpace(promptInput.Text())
 							res, err := generateChatResponse(client, query)
 
