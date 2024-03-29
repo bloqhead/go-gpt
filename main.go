@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"image/color"
 	"log"
 	"os"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -25,16 +23,16 @@ var (
 	apiKey string
 
 	labelText = "Hello, I'm ChatGPT. Let's start a conversation!"
-	theme = material.NewTheme()
-	title = "Go GPT"
+	theme     = material.NewTheme()
+	title     = "Go GPT"
 
 	// app dimensions and spacing
-	appWidth = unit.Dp(400)
-	appHeight = unit.Dp(600)
-	appPadding = unit.Dp(16)
+	appWidth   = unit.Dp(400)
+	appHeight  = unit.Dp(600)
+	appMargin  = unit.Dp(20)
 
 	// widgets
-	button = new(widget.Clickable)
+	button      = new(widget.Clickable)
 	promptInput = new(widget.Editor)
 
 	requestProcessing = false
@@ -81,126 +79,72 @@ func run(w *app.Window) error {
 	// listen for app events
 	for {
 		switch e := w.NextEvent().(type) {
-			case app.DestroyEvent:
-				return e.Err
-			case app.FrameEvent:
-				gtx := app.NewContext(&ops, e)
+		case app.DestroyEvent:
+			return e.Err
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
 
-				// handle button click events
-				if button.Clicked(gtx) {
-					if !requestProcessing {
-						requestProcessing = true
+			// handle button click events
+			if button.Clicked(gtx) {
+				if !requestProcessing {
+					requestProcessing = true
 
-						go func() {
-							client := openai.NewClient(apiKey)
-							query := strings.TrimSpace(promptInput.Text())
-							res, err := generateChatResponse(client, query)
+					go func() {
+						client := openai.NewClient(apiKey)
+						query := strings.TrimSpace(promptInput.Text())
+						res, err := generateChatResponse(client, query)
 
-							if err != nil {
-								log.Printf("GPT Error: %s\n", err)
-							}
-
-							labelText = res
-							requestProcessing = false
-
-							w.Invalidate()
-						}()
-					}
-				}
-
-				layout.Stack{}.Layout(gtx,
-					layout.Expanded(func(gtx C) D {
-						return layout.Inset{
-							Top: appPadding,
-							Bottom: appPadding,
-							Left: appPadding,
-							Right: appPadding,
-						}.Layout(gtx, func(gtx C) D {
-							// content area
-							return layout.Center.Layout(gtx, func(gtx C) D {
-								// gtx.Constraints.Min = gtx.Constraints.Max
-
-								return layout.Flex{
-									Axis: layout.Vertical,
-									Spacing: layout.SpaceBetween,
-								}.Layout(gtx,
-									// label
-									layout.Flexed(1, func(gtx C) D {
-										return layout.Center.Layout(gtx, func(gtx C) D {
-											label := material.Label(theme, unit.Sp(12), labelText)
-
-											return label.Layout(gtx)
-										})
-									}),
-
-									// input and button
-									layout.Flexed(5, func(gtx C) D {
-										return layout.Center.Layout(gtx, func(gtx C) D {
-											return layout.Flex{
-												Alignment: layout.Middle,
-											}.Layout(gtx,
-												// prompt input
-												layout.Flexed(4, func(gtx C) D {
-													input := material.Editor(theme, promptInput, "Enter your query...")
-
-													return input.Layout(gtx)
-												}),
-
-												// submit button
-												layout.Rigid(func(gtx C) D {
-													return layout.Center.Layout(gtx, func(gtx C) D {
-														btn := material.Button(theme, button, "Submit")
-
-														return btn.Layout(gtx)
-													})
-												}),
-											)
-										})
-									}),
-								)
-							})
-						})
-					}),
-
-					layout.Stacked(func(gtx C) D {
-						if requestProcessing {
-							bgColor := color.NRGBA{R: 0, G: 0, B: 0, A: 150}
-
-							return layout.Center.Layout(gtx, func(gtx C) D {
-								gtx.Constraints.Min = gtx.Constraints.Max
-
-								return layout.Stack{
-									Alignment: layout.Center,
-								}.Layout(gtx,
-									layout.Expanded(func(gtx C) D {
-										// semi-transparent background overlay
-										return layout.Inset{
-											Top: unit.Dp(0),
-											Bottom: unit.Dp(0),
-											Left: unit.Dp(0),
-											Right: unit.Dp(0),
-										}.Layout(gtx, func(gtx C) D {
-											paint.ColorOp{Color: bgColor}.Add(gtx.Ops)
-											paint.PaintOp{}.Add(gtx.Ops)
-											return D{}
-										})
-									}),
-
-									// loader
-									layout.Expanded(func(gtx C) D {
-										loader := material.Loader(theme)
-
-										return loader.Layout(gtx)
-									}),
-								)
-							})
+						if err != nil {
+							log.Printf("GPT Error: %s\n", err)
 						}
 
-						return D{}
-					}),
-				)
+						labelText = res
+						requestProcessing = false
 
-				e.Frame(gtx.Ops)
+						w.Invalidate()
+					}()
+				}
+			}
+
+			layout.Flex{
+				Axis: layout.Vertical,
+				Spacing: layout.SpaceBetween,
+			}.Layout(gtx,
+
+				// input field
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						margins := layout.Inset{
+							Top:    appMargin,
+							Bottom: appMargin,
+							Left:   appMargin,
+							Right:  appMargin,
+						}
+
+						return margins.Layout(gtx, func(gtx C) D {
+							return material.Label(theme, unit.Sp(12), labelText).Layout(gtx)
+						})
+					},
+				),
+
+				// submit button
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						margins := layout.Inset{
+							Top:    appMargin,
+							Bottom: appMargin,
+							Left:   appMargin,
+							Right:  appMargin,
+						}
+
+						return margins.Layout(gtx, func(gtx C) D {
+							return material.Button(theme, button, "Generate Response").Layout(gtx)
+						})
+					},
+				),
+			)
+
+			e.Frame(gtx.Ops)
 		}
 	}
 }
@@ -214,7 +158,7 @@ func generateChatResponse(client *openai.Client, prompt string) (string, error) 
 			Model: openai.GPT3Dot5Turbo,
 			Messages: []openai.ChatCompletionMessage{
 				{
-					Role: openai.ChatMessageRoleUser,
+					Role:    openai.ChatMessageRoleUser,
 					Content: prompt,
 				},
 			},
