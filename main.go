@@ -161,8 +161,6 @@ func run(w *app.Window) error {
 }
 
 func generateChatResponse(client *openai.Client, prompt string) (string, error) {
-	// isLoading := true
-
 	res, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
