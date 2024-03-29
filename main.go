@@ -13,7 +13,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 
-	// "gioui.org/text"
 	"github.com/sashabaranov/go-openai"
 
 	"github.com/joho/godotenv"
@@ -27,9 +26,9 @@ var (
 	title     = "Go GPT"
 
 	// app dimensions and spacing
-	appWidth   = unit.Dp(400)
-	appHeight  = unit.Dp(600)
-	appMargin  = unit.Dp(20)
+	appWidth  = unit.Dp(400)
+	appHeight = unit.Dp(600)
+	appMargin = unit.Dp(16)
 
 	// widgets
 	button      = new(widget.Clickable)
@@ -79,10 +78,20 @@ func run(w *app.Window) error {
 	// listen for app events
 	for {
 		switch e := w.NextEvent().(type) {
+
 		case app.DestroyEvent:
 			return e.Err
+
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
+
+			// component spacing
+			margins := layout.Inset{
+				Top:    appMargin,
+				Bottom: appMargin,
+				Left:   appMargin,
+				Right:  appMargin,
+			}
 
 			// handle button click events
 			if button.Clicked(gtx) {
@@ -106,39 +115,41 @@ func run(w *app.Window) error {
 				}
 			}
 
+			// app layout
 			layout.Flex{
-				Axis: layout.Vertical,
+				Axis:    layout.Vertical,
 				Spacing: layout.SpaceBetween,
 			}.Layout(gtx,
 
-				// input field
-				layout.Rigid(
+				// response display
+				layout.Flexed(1,
 					func(gtx layout.Context) layout.Dimensions {
-						margins := layout.Inset{
-							Top:    appMargin,
-							Bottom: appMargin,
-							Left:   appMargin,
-							Right:  appMargin,
-						}
-
 						return margins.Layout(gtx, func(gtx C) D {
 							return material.Label(theme, unit.Sp(12), labelText).Layout(gtx)
 						})
 					},
 				),
 
+				// prompt input
+				layout.Rigid(
+					func(gtx C) D {
+						return margins.Layout(gtx, func(gtx C) D {
+							return material.Editor(theme, promptInput, "Type your message here...").Layout(gtx)
+						})
+					},
+				),
+
 				// submit button
 				layout.Rigid(
-					func(gtx layout.Context) layout.Dimensions {
-						margins := layout.Inset{
-							Top:    appMargin,
-							Bottom: appMargin,
-							Left:   appMargin,
-							Right:  appMargin,
+					func(gtx C) D {
+						responseText := "Generate Response"
+
+						if requestProcessing {
+							responseText = "Generating response..."
 						}
 
 						return margins.Layout(gtx, func(gtx C) D {
-							return material.Button(theme, button, "Generate Response").Layout(gtx)
+							return material.Button(theme, button, responseText).Layout(gtx)
 						})
 					},
 				),
