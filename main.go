@@ -11,7 +11,9 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget"
+	// "gioui.org/font/gofont"
 	"gioui.org/widget/material"
+	"image/color"
 
 	"github.com/sashabaranov/go-openai"
 
@@ -21,8 +23,8 @@ import (
 var (
 	apiKey string
 
+	// general settings
 	labelText = "Hello, I'm ChatGPT. Let's start a conversation!"
-	theme     = material.NewTheme()
 	title     = "Go GPT"
 
 	// app dimensions and spacing
@@ -32,10 +34,22 @@ var (
 
 	// widgets
 	button      = new(widget.Clickable)
+	icon 				= new(widget.Icon)
 	promptInput = new(widget.Editor)
 
+	// state
 	requestProcessing = false
 )
+
+// theming
+var (
+	themeBg     = color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0xFF} // Black background
+	themeFg     = color.NRGBA{R: 0xFF, G: 0xFF, B: 0xFF, A: 0xFF} // White text
+	themeAccent = color.NRGBA{R: 0x00, G: 0x7A, B: 0xCC, A: 0xFF} // Blue accent
+	themeBorder = color.NRGBA{R: 0x00, G: 0x7A, B: 0xCC, A: 0xFF} // Blue border
+)
+
+var theme = material.NewTheme()
 
 type (
 	C = layout.Context
@@ -149,7 +163,9 @@ func run(w *app.Window) error {
 						}
 
 						return margins.Layout(gtx, func(gtx C) D {
+							// return material.Button(theme, button, responseText).Layout(gtx)
 							return material.Button(theme, button, responseText).Layout(gtx)
+							// return material.IconButton(theme, button, icon, responseText).Layout(gtx)
 						})
 					},
 				),
